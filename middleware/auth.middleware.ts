@@ -2,13 +2,17 @@ import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 
 interface JwtPayload {
-  id: number;
+  userId: string;
 }
 
 declare global {
   namespace Express {
+    interface User {
+      id: string;
+    }
+
     interface Request {
-      user?: JwtPayload;
+      user?: User;
     }
   }
 }
@@ -33,7 +37,7 @@ export const protect = (
       process.env.JWT_SECRET!
     ) as JwtPayload;
 
-    req.user = decoded;
+    req.user = { id: decoded.userId };
 
     next();
   } catch {

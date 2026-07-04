@@ -4,9 +4,10 @@ import {
     varchar,
     timestamp
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
-    id: uuid("id").primaryKey(),
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
 
     name: varchar("name", { length: 255 }).notNull(),
 
