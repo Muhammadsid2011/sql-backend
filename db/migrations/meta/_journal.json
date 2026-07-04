@@ -15,6 +15,13 @@
       "when": 1783105987653,
       "tag": "0001_heavy_swordsman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783162364589,
+      "tag": "0002_foamy_switch",
+      "breakpoints": true
     }
   ]
 }

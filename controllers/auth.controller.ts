@@ -1,11 +1,6 @@
 import { Request, Response } from "express";
-import { eq } from "drizzle-orm";
-import bcrypt from "bcryptjs";
-import { db } from "../db";
-import { users } from "../db/schema";
-import { generateToken } from "../utils/jwt";
-import {COOKIE_OPTIONS} from "../utils/cookie"
-
+import { AuthService } from "../services/auth.services";
+import { COOKIE_OPTIONS } from "../utils/cookie";
 
 export class AuthController {
   static async register(req: Request, res: Response) {
@@ -19,42 +14,27 @@ export class AuthController {
         });
       }
 
-      const existingUser = await db.query.users.findFirst({
-        where: eq(users.email, email),
-      });
-
-      if (existingUser) {
-        return res.status(409).json({
-          success: false,
-          message: "Email already exists.",
-        });
-      }
-
-      const hashedPassword = await bcrypt.hash(password, 12);
-
-      const [user] = await db
-        .insert(users)
-        .values({
-          name,
-          email,
-          password: hashedPassword,
-        })
-        .returning();
-
-      const token = generateToken(user.id);
+      const { token, user } = await AuthService.register(
+        name,
+        email,
+        password
+      );
 
       res.cookie("token", token, COOKIE_OPTIONS);
 
       return res.status(201).json({
         success: true,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        },
+        user,
       });
     } catch (error) {
       console.error(error);
+
+      if (error instanceof Error && error.message === "EMAIL_EXISTS") {
+        return res.status(409).json({
+          success: false,
+          message: "Email already exists.",
+        });
+      }
 
       return res.status(500).json({
         success: false,
@@ -74,30 +54,7 @@ export class AuthController {
         });
       }
 
-      const user = await db.query.users.findFirst({
-        where: eq(users.email, email),
-      });
-
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: "Invalid credentials.",
-        });
-      }
-
-      const isPasswordCorrect = await bcrypt.compare(
-        password,
-        user.password
-      );
-
-      if (!isPasswordCorrect) {
-        return res.status(401).json({
-          success: false,
-          message: "Invalid credentials.",
-        });
-      }
-
-      const token = generateToken(user.id);
+      const { token } = await AuthService.login(email, password);
 
       res.cookie("token", token, COOKIE_OPTIONS);
 
@@ -108,6 +65,16 @@ export class AuthController {
     } catch (error) {
       console.error(error);
 
+      if (
+        error instanceof Error &&
+        error.message === "INVALID_CREDENTIALS"
+      ) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid credentials.",
+        });
+      }
+
       return res.status(500).json({
         success: false,
         message: "Internal server error.",
@@ -117,29 +84,21 @@ export class AuthController {
 
   static async me(req: Request, res: Response) {
     try {
-      const userId = req.user!.id;
+      const user = await AuthService.getMe(req.user!.id);
 
-      const user = await db.query.users.findFirst({
-        where: eq(users.id, userId),
+      return res.json({
+        success: true,
+        user,
       });
+    } catch (error) {
+      console.error(error);
 
-      if (!user) {
+      if (error instanceof Error && error.message === "USER_NOT_FOUND") {
         return res.status(404).json({
           success: false,
           message: "User not found.",
         });
       }
-
-      return res.json({
-        success: true,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        },
-      });
-    } catch (error) {
-      console.error(error);
 
       return res.status(500).json({
         success: false,
