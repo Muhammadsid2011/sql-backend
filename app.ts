@@ -5,9 +5,9 @@ import helmet from "helmet";
 
 const app = express();
 
+app.use(helmet());
 app.use(express.json());
 app.use(cookieParser());
-app.use(helmet());
 app.use("/api/auth", authRoutes);
 
 export default app;
